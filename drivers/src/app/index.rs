@@ -11,16 +11,14 @@ pub async fn endpoint(req: HttpRequest, config: web::Data<Config>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::app::config;
-
     use super::*;
-    use actix_web::{test, App};
+    use actix_web::{test, App, web::Data};
 
     #[actix_web::test]
     async fn get() {
         let app = test::init_service(
             App::new()
-                .configure(config::configure)
+                .app_data(Data::new(Config::default()))
                 .service(endpoint)
         ).await;
         let req = test::TestRequest::get()

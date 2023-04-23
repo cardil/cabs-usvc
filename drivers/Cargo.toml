@@ -8,9 +8,21 @@ actix-web = "4"
 log = "0.4"
 env_logger = "0.10"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+redis = { version = "0.23", default-features = false, features = ["json", "tokio-comp", "connection-manager"] }
+redis-derive = "0.1"
+config = "0.13"
+async-trait = "0.1"
+futures = "0.3"
+lazy_static = "1"
+data-encoding = "2"
+num = "0.4"
+chrono = "0.4"
 
 [dev-dependencies]
 actix-rt = "2"
 portpicker = "0.1"
 reqwest = { version = "0.11", features = ["blocking"] }
-anyhow = "1"
+test-log = "0.2"
+
