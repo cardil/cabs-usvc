@@ -22,9 +22,11 @@ pub(crate) trait Repository {
 
     async fn list(&mut self, page: &Page) -> Result<Vec<ID<Driver>>>;
 
+    async fn get(&mut self, id: &Identifier) -> Result<Driver>;
+
     async fn count(&mut self) -> Result<isize>;
 
-    async fn add(&mut self, drv: &ID<Driver>) -> Result<()>;
+    async fn set(&mut self, drv: &ID<Driver>) -> Result<()>;
 }
 
 struct RedisRepository {
@@ -95,6 +97,33 @@ impl Repository for RedisRepository {
         Ok(drvs)
     }
 
+    async fn get(&mut self, id: &Identifier) -> Result<Driver> {
+        let key = format!("drivers:{}", id.to_string());
+        let query = redis::Cmd::json_get(key, "$")
+            .map_err(error::ErrorInternalServerError)?;
+        let drvs: String = query
+            .query_async(&mut self.conn)
+            .await
+            .map_err(error::ErrorInternalServerError)?;
+
+        log::trace!("drvs: {:?}", drvs);
+
+        let drvs: Vec<Driver> = serde_json::from_str(&drvs)
+            .map_err(error::ErrorInternalServerError)?;
+
+        if drvs.len() != 1 {
+            log::error!("Invalid driver: {:?}", drvs);
+            return Err(error::ErrorInternalServerError("Invalid driver"));
+        }
+
+        let drv = drvs
+            .into_iter()
+            .next()
+            .ok_or(error::ErrorInternalServerError("Invalid driver"))?;
+
+        Ok(drv)
+    }
+
     async fn count(&mut self) -> Result<isize> {
         redis::Cmd::zcard("drivers-idx")
             .query_async(&mut self.conn)
@@ -102,7 +131,7 @@ impl Repository for RedisRepository {
             .map_err(error::ErrorInternalServerError)
     }
 
-    async fn add(&mut self, drv: &ID<Driver>) -> Result<()> {
+    async fn set(&mut self, drv: &ID<Driver>) -> Result<()> {
         let id = drv.id.to_string();
         let key = format!("drivers:{}", &id);
         let query = redis::Cmd::json_set(key, "$", &drv.entity)

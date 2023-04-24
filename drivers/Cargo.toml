@@ -11,7 +11,6 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 redis = { version = "0.23", default-features = false, features = ["json", "tokio-comp", "connection-manager"] }
-redis-derive = "0.1"
 config = "0.13"
 async-trait = "0.1"
 futures = "0.3"
@@ -19,6 +18,7 @@ lazy_static = "1"
 data-encoding = "2"
 num = "0.4"
 chrono = "0.4"
+regex = "1"
 
 [dev-dependencies]
 actix-rt = "2"

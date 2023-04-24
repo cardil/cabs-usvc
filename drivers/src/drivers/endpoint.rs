@@ -1,12 +1,11 @@
+use std::future::Future;
+
+use actix_web::guard::Guard;
 use actix_web::http::header;
 use actix_web::{
     error,
     guard,
 };
-use futures::future::BoxFuture;
-use std::future::Future;
-
-use actix_web::guard::Guard;
 use actix_web::{
     web,
     HttpRequest,
@@ -14,21 +13,24 @@ use actix_web::{
     Result,
     Scope,
 };
+use futures::future::BoxFuture;
+
+use crate::app::config::{
+    Db,
+    State,
+};
+use crate::drivers::entity::NewDriver;
+use crate::support::id::{
+    Identifier,
+    ID,
+};
+use crate::support::page::Page;
 
 use super::entity::Driver;
 use super::repository::{
     self,
     Repository,
 };
-use crate::app::config::{
-    Db,
-    State,
-};
-use crate::support::id::{
-    Identifier,
-    ID,
-};
-use crate::support::page::Page;
 
 pub(crate) fn new(binding: Binding) -> Scope {
     web::scope("/drivers")
@@ -36,9 +38,29 @@ pub(crate) fn new(binding: Binding) -> Scope {
         .service(
             web::resource("")
                 .route(web::get().to(list))
-                .route(web::post().guard(expects_json()).to(add))
+                .route(web::post().guard(expects_json()).to(add)),
+        )
+        .service(
+            web::resource("/{id}")
+                .route(web::get().to(get))
                 .route(web::put().guard(expects_json()).to(update)),
         )
+}
+
+async fn get(
+    path: web::Path<i64>,
+    state: web::Data<State>,
+    binding: web::Data<Binding>,
+) -> Result<HttpResponse> {
+    let id = Identifier::from(path.into_inner());
+    log::debug!("id: {:?}", id);
+
+    let db = state.db.clone();
+    let mut repo = binding.repo_factory.call(db).await?;
+
+    let drv = repo.get(&id).await?;
+
+    Ok(HttpResponse::Ok().json(&drv))
 }
 
 async fn list(
@@ -64,7 +86,7 @@ async fn list(
 }
 
 async fn add(
-    drv: web::Json<Driver>,
+    drv: web::Json<NewDriver>,
     state: web::Data<State>,
     binding: web::Data<Binding>,
 ) -> Result<HttpResponse> {
@@ -73,21 +95,44 @@ async fn add(
     let db = state.db.clone();
     let mut repo = binding.repo_factory.call(db).await?;
 
-    drv.validate().map_err(error::ErrorBadRequest)?;
+    drv.validate(&state.clock).map_err(error::ErrorBadRequest)?;
     let id = ID {
         id:     Identifier::new(&state.clock),
-        entity: drv.into_inner(),
+        entity: drv.into_inner().onto(&Driver::default()),
     };
 
-    repo.add(&id).await?;
+    repo.set(&id).await?;
 
     log::debug!("new id: {:?}", id.id);
 
     Ok(HttpResponse::Ok().json(&id))
 }
 
-async fn update(_req: HttpRequest) -> Result<HttpResponse> {
-    Ok(HttpResponse::Ok().finish())
+async fn update(
+    path: web::Path<i64>,
+    drv: web::Json<NewDriver>,
+    state: web::Data<State>,
+    binding: web::Data<Binding>,
+) -> Result<HttpResponse> {
+    let id = Identifier::from(path.into_inner());
+    log::debug!("id: {:?}", id);
+
+    log::debug!("drv: {:?}", drv);
+    drv.validate(&state.clock).map_err(error::ErrorBadRequest)?;
+
+    let db = state.db.clone();
+    let mut repo = binding.repo_factory.call(db).await?;
+
+    let curr = repo.get(&id).await?;
+    let upd = drv.into_inner().onto(&curr);
+    let inst = ID {
+        id,
+        entity: upd.clone(),
+    };
+    log::debug!("to update: {:?}", &inst);
+    repo.set(&inst).await?;
+
+    Ok(HttpResponse::Ok().json(&upd))
 }
 
 pub(crate) struct Binding {
@@ -127,12 +172,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::support::{
-        id::ID,
-        page::Pagination,
-    };
-
-    use super::*;
     use actix_web::{
         body::to_bytes,
         http::{
@@ -150,6 +189,13 @@ mod tests {
         App,
         Result,
     };
+
+    use crate::support::{
+        id::ID,
+        page::Pagination,
+    };
+
+    use super::*;
 
     trait BodyTest {
         fn as_str(&self) -> &str;

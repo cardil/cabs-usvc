@@ -59,6 +59,12 @@ impl From<&String> for Identifier {
     }
 }
 
+impl From<i64> for Identifier {
+    fn from(id: i64) -> Self {
+        Identifier(id)
+    }
+}
+
 lazy_static! {
     static ref B32: Encoding = {
         let mut spec = data_encoding::Specification::new();
