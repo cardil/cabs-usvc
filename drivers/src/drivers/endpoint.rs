@@ -19,7 +19,10 @@ use crate::app::config::{
     Db,
     State,
 };
-use crate::drivers::entity::NewDriver;
+use crate::drivers::entity::{
+    NewDriver,
+    Type,
+};
 use crate::support::id::{
     Identifier,
     ID,
@@ -45,6 +48,11 @@ pub(crate) fn new(binding: Binding) -> Scope {
                 .route(web::get().to(get))
                 .route(web::put().guard(expects_json()).to(update)),
         )
+        .service(web::resource("/{id}/activate").route(web::put().to(activate)))
+        .service(
+            web::resource("/{id}/deactivate").route(web::put().to(deactivate)),
+        )
+        .service(web::resource("/{id}/graduate").route(web::put().to(graduate)))
 }
 
 async fn get(
@@ -125,6 +133,77 @@ async fn update(
 
     let curr = repo.get(&id).await?;
     let upd = drv.into_inner().onto(&curr);
+    let inst = ID {
+        id,
+        entity: upd.clone(),
+    };
+    log::debug!("to update: {:?}", &inst);
+    repo.set(&inst).await?;
+
+    Ok(HttpResponse::Ok().json(&upd))
+}
+
+async fn activate(
+    path: web::Path<i64>,
+    state: web::Data<State>,
+    binding: web::Data<Binding>,
+) -> Result<HttpResponse> {
+    let id = Identifier::from(path.into_inner());
+    log::debug!("id: {:?}", id);
+
+    let db = state.db.clone();
+    let mut repo = binding.repo_factory.call(db).await?;
+
+    let curr = repo.get(&id).await?;
+    let upd = curr
+        .activate(&state.clock)
+        .map_err(error::ErrorBadRequest)?;
+    let inst = ID {
+        id,
+        entity: upd.clone(),
+    };
+    log::debug!("to update: {:?}", &inst);
+    repo.set(&inst).await?;
+
+    Ok(HttpResponse::Ok().json(&upd))
+}
+
+async fn deactivate(
+    path: web::Path<i64>,
+    state: web::Data<State>,
+    binding: web::Data<Binding>,
+) -> Result<HttpResponse> {
+    let id = Identifier::from(path.into_inner());
+    log::debug!("id: {:?}", id);
+
+    let db = state.db.clone();
+    let mut repo = binding.repo_factory.call(db).await?;
+
+    let curr = repo.get(&id).await?;
+    let upd = curr.deactivate();
+    let inst = ID {
+        id,
+        entity: upd.clone(),
+    };
+    log::debug!("to update: {:?}", &inst);
+    repo.set(&inst).await?;
+
+    Ok(HttpResponse::Ok().json(&upd))
+}
+
+async fn graduate(
+    path: web::Path<i64>,
+    state: web::Data<State>,
+    binding: web::Data<Binding>,
+) -> Result<HttpResponse> {
+    let id = Identifier::from(path.into_inner());
+    log::debug!("id: {:?}", id);
+
+    let db = state.db.clone();
+    let mut repo = binding.repo_factory.call(db).await?;
+
+    let curr = repo.get(&id).await?;
+    let upd = curr.with_type(Type::Regular);
     let inst = ID {
         id,
         entity: upd.clone(),

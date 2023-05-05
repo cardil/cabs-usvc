@@ -52,6 +52,46 @@ pub struct Driver {
     pub fee:        Option<Fee>,
 }
 
+impl Driver {
+    pub(crate) fn with_type(&self, typ: Type) -> Driver {
+        let mut driver = self.clone();
+        driver.r#type = typ;
+
+        driver
+    }
+
+    pub(crate) fn activate(&self, clk: &Clock) -> Result<Driver, Error> {
+        let now = clk.now();
+        let mut driver = self.clone();
+        driver.status = Status::Active;
+        if !driver
+            .attributes
+            .contains_key(&Attribute::YearsOfExperience)
+        {
+            driver.attributes.insert(
+                Attribute::YearsOfExperience,
+                format!("{}", now.to_rfc3339()),
+            );
+        }
+
+        match self.license {
+            Some(ref license) => license.validate(clk),
+            None => {
+                Err(Error::InvalidLicense("Driver has no license".to_string()))
+            }
+        }?;
+
+        Ok(driver)
+    }
+
+    pub(crate) fn deactivate(&self) -> Driver {
+        let mut driver = self.clone();
+        driver.status = Status::Inactive;
+
+        driver
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct License {
     pub number:  String,
