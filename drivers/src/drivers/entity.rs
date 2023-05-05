@@ -2,6 +2,7 @@ use chrono::{
     DateTime,
     Local,
 };
+use std::collections::HashMap;
 use std::fmt::Display;
 
 use crate::support::clock::{
@@ -15,26 +16,40 @@ use serde::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewDriver {
-    pub name:    String,
-    pub surname: String,
+    pub name:       String,
+    pub surname:    String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub photo:   Option<String>,
+    pub photo:      Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub license: Option<License>,
+    pub license:    Option<License>,
+    #[serde(
+        skip_serializing_if = "HashMap::is_empty",
+        default = "HashMap::new"
+    )]
+    pub attributes: HashMap<Attribute, String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fee:        Option<Fee>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Driver {
-    pub name:    String,
-    pub surname: String,
-    #[serde(default)]
-    pub status:  Status,
-    #[serde(default)]
-    pub r#type:  Type,
+    pub name:       String,
+    pub surname:    String,
+    #[serde(skip_serializing_if = "default", default)]
+    pub status:     Status,
+    #[serde(skip_serializing_if = "default", default)]
+    pub r#type:     Type,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub photo:   Option<String>,
+    pub photo:      Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub license: Option<License>,
+    pub license:    Option<License>,
+    #[serde(
+        skip_serializing_if = "HashMap::is_empty",
+        default = "HashMap::new"
+    )]
+    pub attributes: HashMap<Attribute, String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fee:        Option<Fee>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +64,19 @@ pub struct License {
     pub expires: Option<DateTime<Local>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "kebab-case")]
+pub enum Attribute {
+    PenaltyPoints,
+    Nationality,
+    YearsOfExperience,
+    MedicalExaminationExpirationDate,
+    MedicalExaminationRemarks,
+    Email,
+    Birthplace,
+    CompanyName,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Status {
     Active,
@@ -61,22 +89,75 @@ pub enum Type {
     Regular,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum FeeType {
+    Flat,
+    Percentage,
+}
+
+impl Display for FeeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
+        write!(f, "{}", repr)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Fee {
+    pub fee_type: FeeType,
+    pub amount:   usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min:      Option<usize>,
+}
+
+impl Fee {
+    pub(crate) fn validate(&self) -> Result<(), Error> {
+        let ft = self.fee_type.clone();
+        match self.fee_type {
+            FeeType::Flat => {
+                if self.amount <= 0 {
+                    return Err(Error::InvalidFeeAmount(self.amount, ft));
+                }
+
+                if let Some(min) = self.min {
+                    if min > self.amount {
+                        return Err(Error::InvalidFeeMin(min, ft));
+                    }
+                }
+            }
+            FeeType::Percentage => {
+                if self.amount > 10000 {
+                    return Err(Error::InvalidFeeAmount(self.amount, ft));
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     InvalidName(String),
     InvalidSurname(String),
     InvalidLicense(String),
+    InvalidFeeAmount(usize, FeeType),
+    InvalidFeeMin(usize, FeeType),
 }
 
 impl Default for Driver {
     fn default() -> Self {
         Self {
-            name:    String::new(),
-            surname: String::new(),
-            status:  Status::default(),
-            r#type:  Type::default(),
-            photo:   None,
-            license: None,
+            name:       String::new(),
+            surname:    String::new(),
+            status:     Status::default(),
+            r#type:     Type::default(),
+            photo:      None,
+            license:    None,
+            attributes: HashMap::new(),
+            fee:        None,
         }
     }
 }
@@ -99,6 +180,12 @@ impl Display for Error {
             Error::InvalidName(n) => write!(f, "Invalid name: {}", n),
             Error::InvalidSurname(n) => write!(f, "Invalid surname: {}", n),
             Error::InvalidLicense(l) => write!(f, "Invalid license: {}", l),
+            Error::InvalidFeeAmount(a, ft) => {
+                write!(f, "Invalid fee amount: {} for type {}", a, ft)
+            }
+            Error::InvalidFeeMin(m, ft) => {
+                write!(f, "Invalid fee minimum: {} for type {}", m, ft)
+            }
         }
     }
 }
@@ -138,6 +225,11 @@ impl NewDriver {
             return Err(Error::InvalidSurname(self.surname.clone()));
         }
 
+        match self.fee {
+            None => Ok(()),
+            Some(ref fee) => fee.validate(),
+        }?;
+
         match self.license {
             None => Ok(()),
             Some(ref license) => license.validate(clock),
@@ -146,12 +238,19 @@ impl NewDriver {
 
     pub(crate) fn onto(self, defaults: &Driver) -> Driver {
         Driver {
-            name:    self.name,
-            surname: self.surname,
-            status:  defaults.status.clone(),
-            r#type:  defaults.r#type.clone(),
-            photo:   self.photo,
-            license: self.license,
+            name:       self.name,
+            surname:    self.surname,
+            status:     defaults.status.clone(),
+            r#type:     defaults.r#type.clone(),
+            photo:      self.photo,
+            license:    self.license,
+            attributes: defaults
+                .attributes
+                .iter()
+                .chain(self.attributes.iter())
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+            fee:        self.fee,
         }
     }
 }
@@ -159,6 +258,10 @@ impl NewDriver {
 lazy_static! {
     static ref LICENSE_NUMBER_REGEX: regex::Regex =
         regex::Regex::new(r"(?i)^[a-z9]{5}\d{6}[a-z9]{2}\d[a-z]{2}$").unwrap();
+}
+
+fn default<T: Default + PartialEq>(t: &T) -> bool {
+    *t == Default::default()
 }
 
 fn serialize_dt<S>(
