@@ -19,10 +19,11 @@ data-encoding = "2"
 num = "0.4"
 chrono = "0.4"
 regex = "1"
+cloudevents-sdk = { version = "0.7", features = ["actix", "reqwest"] }
+reqwest = { version = "0.11", features = ["blocking"] }
 
 [dev-dependencies]
 actix-rt = "2"
 portpicker = "0.1"
-reqwest = { version = "0.11", features = ["blocking"] }
 test-log = "0.2"
 

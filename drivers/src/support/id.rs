@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::ops::Sub;
 
 use chrono::{
@@ -23,6 +24,15 @@ use crate::support::clock::{
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ID<T> {
     pub id:     Identifier,
+    pub entity: T,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Subject<T>
+where
+    T: Debug + Clone + Serialize,
+{
+    pub id:     Option<String>,
     pub entity: T,
 }
 

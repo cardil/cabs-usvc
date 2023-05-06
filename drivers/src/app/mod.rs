@@ -2,19 +2,24 @@ pub mod config;
 pub mod events;
 pub mod index;
 
-use actix_web::web::Data;
-use actix_web::HttpResponse;
-use actix_web::HttpRequest;
-use actix_web::Error;
-use actix_web::App;
-use actix_web::middleware;
-use actix_web::get;
-use actix_web::dev;
-use actix_web::body;
+use actix_web::{
+    body,
+    dev,
+    get,
+    middleware,
+    web::Data,
+    App,
+    Error,
+    HttpRequest,
+    HttpResponse,
+};
 
 use crate::drivers;
+use crate::drivers::Binding;
 
-pub fn create(state: config::State) -> App<
+pub fn create(
+    state: config::State,
+) -> App<
     impl dev::ServiceFactory<
         dev::ServiceRequest,
         Response = dev::ServiceResponse<impl body::MessageBody>,
@@ -28,10 +33,11 @@ pub fn create(state: config::State) -> App<
         .wrap(middleware::Logger::default())
         .app_data(Data::new(state.config.clone()))
         .app_data(Data::new(state))
+        .app_data(Data::new(Binding::default()))
         .service(index::endpoint)
-        .service(events::endpoint)
+        .service(events::routes())
         .service(health)
-        .service(drivers::scope())
+        .service(drivers::routes())
 }
 
 #[get("/health/{_:(ready|live)}")]

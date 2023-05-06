@@ -34,7 +34,13 @@ pub fn setup_logger(env: &Environment) {
 pub struct Config {
     pub db:          DbConfig,
     pub environment: Environment,
+    pub knative:     Knative,
     pub name:        String,
+}
+
+#[derive(Clone, Debug)]
+pub struct Knative {
+    pub sink: String,
 }
 
 #[derive(Clone, Debug)]
@@ -88,9 +94,14 @@ impl Default for Config {
 
         let name = String::from("world");
 
+        let knative = Knative {
+            sink: env_or("K_SINK", "http://localhost:31111/"),
+        };
+
         Config {
             db,
             environment,
+            knative,
             name,
         }
     }

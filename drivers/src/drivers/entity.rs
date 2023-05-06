@@ -9,6 +9,7 @@ use crate::support::clock::{
     Clock,
     Now,
 };
+use crate::support::money::Money;
 use serde::{
     Deserialize,
     Serialize,
@@ -53,6 +54,38 @@ pub struct Driver {
 }
 
 impl Driver {
+    pub fn calculate_fee(&self, transit_price: &Money) -> Money {
+        let company_fee = self.fee.clone().unwrap_or_default();
+
+        let fee = match company_fee.r#type {
+            FeeType::Percentage => {
+                let percentage = company_fee.amount as f64 / 100.0;
+                transit_price.percentage(percentage)
+            }
+            FeeType::Flat => Money::new(company_fee.amount as i64),
+        };
+
+        let fee = transit_price.subtract(&fee);
+
+        let fee = match company_fee.min {
+            Some(min) => {
+                let mut min = Money::new(min as i64);
+                let leftover = transit_price.subtract(&min);
+                if leftover.less_then(&Money::ZERO) {
+                    min = transit_price.clone();
+                }
+                if fee.less_then(&min) {
+                    min
+                } else {
+                    fee
+                }
+            }
+            None => fee,
+        };
+
+        return fee;
+    }
+
     pub(crate) fn with_type(&self, typ: Type) -> Driver {
         let mut driver = self.clone();
         driver.r#type = typ;
@@ -146,16 +179,16 @@ impl Display for FeeType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Fee {
-    pub fee_type: FeeType,
-    pub amount:   usize,
+    pub r#type: FeeType,
+    pub amount: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub min:      Option<usize>,
+    pub min:    Option<usize>,
 }
 
 impl Fee {
     pub(crate) fn validate(&self) -> Result<(), Error> {
-        let ft = self.fee_type.clone();
-        match self.fee_type {
+        let ft = self.r#type.clone();
+        match self.r#type {
             FeeType::Flat => {
                 if self.amount <= 0 {
                     return Err(Error::InvalidFeeAmount(self.amount, ft));
@@ -175,6 +208,16 @@ impl Fee {
         }
 
         Ok(())
+    }
+}
+
+impl Default for Fee {
+    fn default() -> Self {
+        Self {
+            r#type: FeeType::Percentage,
+            amount: 200,
+            min:    None,
+        }
     }
 }
 

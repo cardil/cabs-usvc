@@ -101,15 +101,18 @@ impl Repository for RedisRepository {
         let key = format!("drivers:{}", id.to_string());
         let query = redis::Cmd::json_get(key, "$")
             .map_err(error::ErrorInternalServerError)?;
-        let drvs: String = query
+        let drvs: Option<String> = query
             .query_async(&mut self.conn)
             .await
             .map_err(error::ErrorInternalServerError)?;
 
         log::trace!("drvs: {:?}", drvs);
 
-        let drvs: Vec<Driver> = serde_json::from_str(&drvs)
-            .map_err(error::ErrorInternalServerError)?;
+        let drvs: Vec<Driver> = match drvs {
+            Some(drvs) => serde_json::from_str(&drvs)
+                .map_err(error::ErrorInternalServerError)?,
+            None => return Err(error::ErrorNotFound("Driver not found")),
+        };
 
         if drvs.len() != 1 {
             log::error!("Invalid driver: {:?}", drvs);

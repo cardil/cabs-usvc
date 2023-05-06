@@ -1,5 +1,4 @@
-use std::future::Future;
-
+use actix_web::dev::HttpServiceFactory;
 use actix_web::guard::Guard;
 use actix_web::http::header;
 use actix_web::{
@@ -11,18 +10,14 @@ use actix_web::{
     HttpRequest,
     HttpResponse,
     Result,
-    Scope,
 };
-use futures::future::BoxFuture;
 
-use crate::app::config::{
-    Db,
-    State,
-};
+use crate::app::config::State;
 use crate::drivers::entity::{
     NewDriver,
     Type,
 };
+use crate::drivers::Binding;
 use crate::support::id::{
     Identifier,
     ID,
@@ -30,14 +25,9 @@ use crate::support::id::{
 use crate::support::page::Page;
 
 use super::entity::Driver;
-use super::repository::{
-    self,
-    Repository,
-};
 
-pub(crate) fn new(binding: Binding) -> Scope {
+pub(crate) fn new() -> impl HttpServiceFactory + 'static {
     web::scope("/drivers")
-        .app_data(web::Data::new(binding))
         .service(
             web::resource("")
                 .route(web::get().to(list))
@@ -214,39 +204,8 @@ async fn graduate(
     Ok(HttpResponse::Ok().json(&upd))
 }
 
-pub(crate) struct Binding {
-    repo_factory: Box<dyn AsyncFactory>,
-}
-
 fn expects_json() -> impl Guard + Sized {
     guard::Header(header::CONTENT_TYPE.as_str(), "application/json")
-}
-
-impl Default for Binding {
-    fn default() -> Self {
-        Self {
-            repo_factory: Box::new(repository::new),
-        }
-    }
-}
-
-// See: https://stackoverflow.com/a/66070319/844449
-trait AsyncFactory {
-    fn call(&self, args: Db)
-        -> BoxFuture<'static, Result<Box<dyn Repository>>>;
-}
-
-impl<T, F> AsyncFactory for T
-where
-    T: Fn(Db) -> F,
-    F: Future<Output = Result<Box<dyn Repository>>> + 'static + Send,
-{
-    fn call(
-        &self,
-        args: Db,
-    ) -> BoxFuture<'static, Result<Box<dyn Repository>>> {
-        Box::pin(self(args))
-    }
 }
 
 #[cfg(test)]
@@ -308,7 +267,8 @@ mod tests {
             App::new()
                 .app_data(Data::new(state.config.clone()))
                 .app_data(Data::new(state))
-                .service(new(binding)),
+                .app_data(Data::new(binding))
+                .service(new()),
         )
         .await;
 
