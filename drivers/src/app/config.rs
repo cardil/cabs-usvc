@@ -4,7 +4,7 @@ use std::env;
 pub fn get_port() -> u16 {
     match env::var("PORT") {
         Ok(v) => v.parse().unwrap(),
-        Err(_) => 8080,
+        Err(_) => 8081,
     }
 }
 
