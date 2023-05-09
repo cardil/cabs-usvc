@@ -1,0 +1,34 @@
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: trg-drivers
+  namespace: demo
+spec:
+  broker: default
+  filter:
+    attributes:
+      type: cabs.drivers.calculate-fee
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: drivers
+      namespace: demo
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: trg-legacy
+  namespace: demo
+spec:
+  broker: default
+  filter:
+    attributes:
+      type: cabs.drivers.driver-fee
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: legacy
+      namespace: demo

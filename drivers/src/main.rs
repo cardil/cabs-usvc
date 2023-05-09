@@ -26,7 +26,7 @@ async fn main() -> std::io::Result<()> {
 
     // Create the HTTP server
     let serv = HttpServer::new(move || app::create(state.clone()))
-        .bind(("127.0.0.1", port))?
+        .bind(("0.0.0.0", port))?
         .run();
 
     let hnd = serv.handle();

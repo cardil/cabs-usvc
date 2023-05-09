@@ -1,0 +1,40 @@
+---
+apiVersion: sources.knative.dev/v1
+kind: SinkBinding
+metadata:
+  labels:
+    app.kubernetes.io/part-of: event-sources-app
+  name: drivers-binding
+  namespace: demo
+spec:
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default
+      namespace: demo
+  subject:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    name: drivers
+    namespace: demo
+---
+apiVersion: sources.knative.dev/v1
+kind: SinkBinding
+metadata:
+  labels:
+    app.kubernetes.io/part-of: event-sources-app
+  name: legacy-binding
+  namespace: demo
+spec:
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default
+      namespace: demo
+  subject:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    name: legacy
+    namespace: demo

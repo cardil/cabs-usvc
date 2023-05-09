@@ -1,0 +1,20 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/part-of: cabs
+    app.openshift.io/runtime: knative
+  name: drivers
+  namespace: demo
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: cabs
+        app.openshift.io/runtime: knative
+    spec:
+      containers:
+      - env:
+        - name: APP_DB_URI
+          value: redis://redis/
+        image: quay.io/cardil/cabs/drivers

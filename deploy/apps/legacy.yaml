@@ -1,0 +1,22 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/part-of: cabs
+    app.openshift.io/runtime: spring-boot
+  name: legacy
+  namespace: demo
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "1"
+      labels:
+        app.kubernetes.io/part-of: cabs
+        app.openshift.io/runtime: spring-boot
+    spec:
+      containers:
+      - env:
+        - name: USVC_DRIVERS
+          value: http://drivers.demo.svc/drivers
+        image: quay.io/cardil/cabs/legacy

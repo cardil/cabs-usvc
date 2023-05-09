@@ -1,0 +1,26 @@
+FROM registry.access.redhat.com/ubi9/ubi as builder
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+RUN dnf install -y gcc openssl-devel
+
+WORKDIR /opt/app-root/src
+ADD Cargo.toml /opt/app-root/src/Cargo.toml
+ADD Cargo.lock /opt/app-root/src/Cargo.lock
+ADD src /opt/app-root/src/src
+RUN cargo build
+
+FROM registry.access.redhat.com/ubi9/ubi
+
+RUN adduser --system \
+  --home /opt/app-root \
+  --shell /sbin/nologin \
+  --comment "Default Application User" \
+  default
+COPY --from=builder /opt/app-root/src/target/debug/drivers /opt/app-root/drivers
+USER default
+
+EXPOSE 8081
+
+ENTRYPOINT ["/opt/app-root/drivers"]
