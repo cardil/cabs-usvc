@@ -2,23 +2,15 @@ specVersion: 0.35.0
 name: drivers
 runtime: rust
 registry: quay.io/cardil/cabs
-image: ""
-imageDigest: ""
+image: quay.io/cardil/cabs/drivers:latest
 created: 2023-04-21T11:00:58.4229945+02:00
 build:
+  builderImages:
+    pack: gcr.io/paketo-buildpacks/builder:full-cf
   buildpacks:
   - docker.io/paketocommunity/rust
   builder: pack
-  buildEnvs: []
-run:
-  volumes: []
-  envs: []
 deploy:
-  namespace: ""
-  remote: false
-  annotations: {}
-  options: {}
-  labels: []
   healthEndpoints:
     liveness: /health/live
     readiness: /health/ready
