@@ -17,6 +17,27 @@ spec:
       protocol: TCP
     - containerPort: 8001
       protocol: TCP
+    resources:
+      limits:
+        cpu: 250m
+        memory: 128Mi
+    lifecycle:
+      postStart:
+        exec:
+          command:
+          - /bin/sh
+          - -c
+          - |
+            /usr/bin/redis-cli --pipe <<EOF
+            ZADD drivers-idx 1985482451 itg2xos
+            JSON.SET drivers:itg2xos $ '{"name":"Matt","surname":"Hicks","license":{"number":"AD9SS564564AA1ZZ"}}'
+
+            ZADD drivers-idx 1985665010 ithhjwk
+            JSON.SET drivers:ithhjwk $ '{"name":"Anice","surname":"Beck"}'
+
+            ZADD drivers-idx 1993432552 ivcpvu2
+            JSON.SET drivers:ivcpvu2 $ '{"name":"Bob","surname":"Falc","status":"Active","type":"Regular","license":{"number":"aassq453654qw1ww","expires":"2025-10-31T22:59:59+01:00"},"attributes":{"nationality":"UA","years-of-experience":"2023-05-05T20:19:07.187781910+02:00","penalty-points":"4"},"fee":{"type":"percentage","amount":480,"min":1000}}'
+            EOF
 ---
 apiVersion: v1
 kind: Service
