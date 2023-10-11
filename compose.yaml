@@ -1,6 +1,8 @@
 services:
   drivers:
-    build: drivers
+    build:
+      context: drivers
+      dockerfile: Containerfile
     ports:
       - "8081:8081"
     environment:
@@ -11,9 +13,20 @@ services:
     networks:
       - backend
       - db
+    develop:
+      watch:
+        - action: rebuild
+          path: drivers/src
+        - action: rebuild
+          path: drivers/Cargo.toml
+        - action: rebuild
+          path: drivers/Cargo.lock
+
 
   legacy:
-    build: legacy
+    build:
+      context: legacy
+      dockerfile: Containerfile
     ports:
       - "8080:8080"
     environment:
@@ -22,6 +35,12 @@ services:
       - drivers
     networks:
       - backend
+    develop:
+      watch:
+        - action: rebuild
+          path: legacy/src
+        - action: rebuild
+          path: legacy/pom.xml
   
   redis:
     image: docker.io/redis/redis-stack-server
@@ -29,7 +48,9 @@ services:
       - db
   
   redis-data:
-    build: drivers/db
+    build:
+      context: drivers/db
+      dockerfile: Containerfile
     networks:
       - db
     depends_on:
