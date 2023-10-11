@@ -1,5 +1,7 @@
+use env_logger::Target;
+
 use crate::support::clock::Clock;
-use std::env;
+use std::{env, fmt};
 
 pub fn get_port() -> u16 {
     match env::var("PORT") {
@@ -21,6 +23,7 @@ pub fn setup_logger(env: &Environment) {
         Err(_) => level,
     };
     let mut b = env_logger::builder();
+    b.target(Target::Stdout);
     if level.is_some() {
         b.filter_level(level.unwrap());
     }
@@ -49,11 +52,24 @@ pub enum Environment {
     Production,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct DbConfig {
     pub uri:  String,
     pub user: Option<String>,
     pub pass: Option<String>,
+}
+
+impl fmt::Debug for DbConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DbConfig")
+            .field("uri", &self.uri)
+            .field("user", &self.user)
+            .field("pass", match &self.pass {
+                None    => &None::<String>,
+                Some(_) => &Some("***"),
+            })
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug)]

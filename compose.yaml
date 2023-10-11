@@ -1,0 +1,43 @@
+services:
+  drivers:
+    build: drivers
+    ports:
+      - "8081:8081"
+    environment:
+      - "APP_DB_URI=redis://redis/"
+      - "APP_ENV=dev"
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  legacy:
+    build: legacy
+    ports:
+      - "8080:8080"
+    environment:
+      - "USVC_DRIVERS=http://drivers:8081/drivers"
+    depends_on:
+      - drivers
+    networks:
+      - backend
+  
+  redis:
+    image: docker.io/redis/redis-stack-server
+    networks:
+      - backend
+  
+  redis-data:
+    build: drivers/db
+    networks:
+      - backend
+    depends_on:
+      - redis
+    environment:
+      - "REDIS_DB=redis"
+      - "HANG=yes"
+    stop_signal: SIGINT
+    restart: on-failure
+
+networks:
+  backend: {}

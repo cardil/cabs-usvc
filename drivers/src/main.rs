@@ -21,6 +21,7 @@ async fn main() -> std::io::Result<()> {
     let state = State::default();
 
     setup_logger(&state.config.environment);
+    log::debug!("Starting server: {:#?}", state.config);
 
     let port = app::config::get_port();
 

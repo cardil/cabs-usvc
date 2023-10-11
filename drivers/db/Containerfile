@@ -1,0 +1,9 @@
+FROM docker.io/redis/redis-stack-server
+
+ADD db.rdb /data/db.rdb
+ADD import.sh /data/import.sh
+WORKDIR /data
+
+ENV REDIS_DB=localhost
+
+CMD ["/data/import.sh"]
