@@ -10,6 +10,7 @@ services:
       - redis
     networks:
       - backend
+      - db
 
   legacy:
     build: legacy
@@ -25,12 +26,12 @@ services:
   redis:
     image: docker.io/redis/redis-stack-server
     networks:
-      - backend
+      - db
   
   redis-data:
     build: drivers/db
     networks:
-      - backend
+      - db
     depends_on:
       - redis
     environment:
@@ -41,3 +42,4 @@ services:
 
 networks:
   backend: {}
+  db: {}
