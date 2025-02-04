@@ -4,6 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: cabs
     app.openshift.io/runtime: knative
+    app: drivers
   name: drivers
   namespace: demo
 spec:
@@ -12,6 +13,7 @@ spec:
       labels:
         app.kubernetes.io/part-of: cabs
         app.openshift.io/runtime: knative
+        app: drivers
     spec:
       containers:
       - env:

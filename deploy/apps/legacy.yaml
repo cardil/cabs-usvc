@@ -4,6 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: cabs
     app.openshift.io/runtime: spring-boot
+    app: legacy
   name: legacy
   namespace: demo
 spec:
@@ -14,6 +15,7 @@ spec:
       labels:
         app.kubernetes.io/part-of: cabs
         app.openshift.io/runtime: spring-boot
+        app: legacy
     spec:
       containers:
       - env:
