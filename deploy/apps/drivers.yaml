@@ -12,6 +12,7 @@ spec:
       labels:
         app.kubernetes.io/part-of: cabs
         app.openshift.io/runtime: knative
+        bindings.knative.dev/include: 'true'
     spec:
       containers:
       - env:
