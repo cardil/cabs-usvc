@@ -1,4 +1,3 @@
-use crate::support::id::Subject;
 use crate::{
     app::config::{
         Config,
@@ -10,7 +9,10 @@ use crate::{
     },
     support::{
         cloudevents::Sender,
-        id::Identifier,
+        id::{
+            Identifier,
+            Subject,
+        },
         money::Money,
     },
 };
@@ -38,22 +40,22 @@ pub struct Service {
 
 impl Service {
     pub async fn calculate_fee(&mut self, ce: Event) -> Result<()> {
-        let fee_event = Self::parse_fee_event(ce)?;
-        let subject = fee_event.id.clone();
+        let calc_fee_intent = Self::unwrap_calculatefee(ce)?;
+        let subject = calc_fee_intent.id.clone();
 
-        log::debug!("fee event: {:?}", fee_event);
-        let drv = self.repo.get(&fee_event.entity.driver_id).await?;
+        log::debug!("calculate fee for: {:?}", calc_fee_intent);
+        let drv = self.repo.get(&calc_fee_intent.entity.driver_id).await?;
 
-        let fee = drv.calculate_fee(&fee_event.entity.transit_price);
+        let fee = drv.calculate_fee(&calc_fee_intent.entity.transit_price);
 
-        log::debug!("fee: {:?}", fee);
+        log::debug!("fee value: {:?}", fee);
 
-        let fee_event = DriverFeeEvent {
-            driver_id: fee_event.entity.driver_id,
+        let driverfee_event = DriverFeeEvent {
+            driver_id: calc_fee_intent.entity.driver_id,
             fee,
         };
 
-        let mut builder = fee_event.to_builder();
+        let mut builder = driverfee_event.to_builder();
         if let Some(id) = subject {
             builder = builder.subject(id);
         }
@@ -64,7 +66,7 @@ impl Service {
         Ok(())
     }
 
-    fn parse_fee_event(ce: Event) -> Result<Subject<CalculateFeeEvent>> {
+    fn unwrap_calculatefee(ce: Event) -> Result<Subject<CalculateFeeEvent>> {
         let ct = ce.datacontenttype();
         if ct != Some("application/json") {
             return Err(error::ErrorBadRequest(format!(

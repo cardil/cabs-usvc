@@ -1,6 +1,7 @@
 edition = "2021"
+# channel: nightly
+unstable_features = true
 enum_discrim_align_threshold = 30
 imports_layout = "Vertical"
-unstable_features = true
 struct_field_align_threshold = 30
 max_width = 80
