@@ -6,6 +6,7 @@ services:
     environment:
       - "APP_DB_URI=redis://redis/"
       - "APP_ENV=dev"
+      - "K_SINK=http://legacy:8080/" # Simulate Event Mesh delivery
     depends_on:
       - redis
     networks:
@@ -17,6 +18,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - "K_SINK=http://drivers:8081/" # Simulate Event Mesh delivery
       - "USVC_DRIVERS=http://drivers:8081/drivers"
     depends_on:
       - drivers
