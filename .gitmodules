@@ -1,3 +1,3 @@
 [submodule "legacy"]
 	path = legacy
-	url = https://github.com/cardil/legacyfighter-cabs-java.git
+	url = https://github.com/openshift-knative/legacyfighter-cabs-java.git
